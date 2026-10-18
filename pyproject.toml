@@ -1,0 +1,37 @@
+[project]
+name = "data-engineering-insurance-pipeline"
+version = "0.1.0"
+description = "Pipeline Medallion de pólizas y siniestros sobre Databricks, Delta Lake y Unity Catalog"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyspark==4.0.1",
+    "pytest==8.3.3",
+    "ruff==0.6.9",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+extend-exclude = ["notebooks"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501"]
+
+[tool.databricks.environment]
+environment_version = '6'
