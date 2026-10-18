@@ -58,7 +58,7 @@ Para ejecuciones locales tener en cuenta que se requiere Java 17 para Spark loca
 python -m venv .venv && source .venv/bin/activate
 ```
 ```bash
-pip install -r requirements-dev.txt
+pip install -e ".[dev]"
 ```
 Para checkear tipado
 ```bash

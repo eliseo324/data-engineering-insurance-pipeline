@@ -1,0 +1,34 @@
+dataset: siniestros
+version: "1.0.0"
+owner: dominio-siniestros
+descripcion: >
+  Siniestros reportados en el core de siniestros. Una fila por siniestro o actualización
+  (cambios de estado, pagos y reservas)
+fuente:
+  sistema: CORE_SINIESTROS
+  formato: csv
+  separador: ";"
+  encoding: UTF-8
+  subcarpeta: siniestros
+  patron_archivo: "*.csv"
+clave_negocio: [siniestro_id]
+orden_version: [fecha_actualizacion]
+historizacion: tipo1
+columnas_monetarias: [valor_pagado, valor_reserva]
+referencias:
+  - {alias: poliza, columna: poliza_id, tabla: silver_polizas, columna_ref: poliza_id}
+columnas:
+  - {nombre: siniestro_id, tipo: string, requerido: true, descripcion: "Identificador único del siniestro", patron: "^SIN[0-9]{8}$"}
+  - {nombre: poliza_id, tipo: string, requerido: true, descripcion: "Póliza afectada (FK)"}
+  - {nombre: fecha_ocurrencia, tipo: date, requerido: true, descripcion: "Fecha de ocurrencia del evento"}
+  - {nombre: fecha_aviso, tipo: date, requerido: true, descripcion: "Fecha en que se notificó a la aseguradora"}
+  - {nombre: tipo_siniestro, tipo: string, requerido: false, descripcion: "Tipo de siniestro"}
+  - {nombre: estado, tipo: string, requerido: true, descripcion: "Estado del siniestro", valores_permitidos: [Abierto, En investigacion, Cerrado, Reactivado]}
+  - {nombre: valor_pagado, tipo: "decimal(18,2)", requerido: true, descripcion: "Valor pagado acumulado (COP)"}
+  - {nombre: valor_reserva, tipo: "decimal(18,2)", requerido: true, descripcion: "Reserva vigente (COP)"}
+  - {nombre: ciudad_ocurrencia, tipo: string, requerido: false, descripcion: "Ciudad de ocurrencia"}
+  - {nombre: fecha_actualizacion, tipo: date, requerido: true, descripcion: "Fecha de la última actualización del siniestro"}
+  - {nombre: origen, tipo: string, requerido: false, descripcion: "Sistema origen del registro"}
+sla:
+  frecuencia: mensual
+  frescura_max_dias: 5

@@ -1,0 +1,32 @@
+dataset: recaudos
+version: "1.0.0"
+owner: dominio-recaudo
+descripcion: >
+  Transacciones de pago de primas. Una fila por transacción; una transacción puede reportarse
+  de nuevo con otro estado (p. ej. Pendiente -> Aplicado -> Reversado).
+fuente:
+  sistema: PAGOS
+  formato: csv
+  separador: ";"
+  encoding: UTF-8
+  subcarpeta: recaudos
+  patron_archivo: "*.csv"
+clave_negocio: [recaudo_id]
+orden_version: [fecha_ingesta]
+historizacion: tipo1
+columnas_monetarias: [valor]
+referencias:
+  - {alias: poliza, columna: poliza_id, tabla: silver_polizas, columna_ref: poliza_id}
+columnas:
+  - {nombre: recaudo_id, tipo: string, requerido: true, descripcion: "Identificador único de la transacción", patron: "^REC[0-9]{8}$"}
+  - {nombre: poliza_id, tipo: string, requerido: true, descripcion: "Póliza a la que se aplica el pago (FK)"}
+  - {nombre: fecha_pago, tipo: date, requerido: true, descripcion: "Fecha efectiva del pago"}
+  - {nombre: valor, tipo: "decimal(18,2)", requerido: true, descripcion: "Valor de la transacción en COP"}
+  - {nombre: medio_pago, tipo: string, requerido: false, descripcion: "Medio de pago"}
+  - {nombre: estado_transaccion, tipo: string, requerido: true, descripcion: "Estado de la transacción", valores_permitidos: [Aplicado, Pendiente, Reversado, Rechazado]}
+  - {nombre: referencia_bancaria, tipo: string, requerido: false, pii: media, descripcion: "Referencia de la entidad financiera"}
+  - {nombre: fecha_ingesta, tipo: date, requerido: true, descripcion: "Fecha en que el sistema de pagos reportó la transacción"}
+  - {nombre: origen, tipo: string, requerido: false, descripcion: "Sistema origen del registro"}
+sla:
+  frecuencia: mensual
+  frescura_max_dias: 5
