@@ -1,9 +1,4 @@
-# import shutil
-# import uuid
 from datetime import date, datetime
-# from pathlib import Path
-
-# import pytest
 
 from src.common.config import PipelineConfig
 from src.common.contracts import cargar_contrato
@@ -15,23 +10,13 @@ from src.ingestion.bronze import (
 )
 from src.ingestion.file_discovery import discover_files, select_files_to_process
 
-# @pytest.fixture
-# def tmp_path():
-#     """tmp_path en UC Volume para que Spark pueda leer los archivos en Serverless."""
-#     base = Path("/Volumes/workspace/default/volume1/_test_tmp")
-#     path = base / uuid.uuid4().hex
-#     path.mkdir(parents=True, exist_ok=True)
-#     yield path
-#     shutil.rmtree(str(path), ignore_errors=True)
-
-
 HEADER = "evento_id;entidad;id_entidad;tipo_evento;fecha_evento;fecha_ingesta;payload;secuencia;origen"
 ROW1 = 'EVT1;POLIZA;POL0000001;CREACION;2024-01-05;2024-01-06;"{""estado_origen"":""NA"",""estado_destino"":""Vigente""}";1;BUS'
 ROW2 = 'EVT2;POLIZA;POL0000001;CANCELACION;05/02/2024;2024-02-06;"{""estado_origen"":""Vigente""}";2;BUS'
 
 
 def _write(path, text, bom=True):
-    path.write_bytes(("_" if bom else "").encode() + text.replace("\n", "\r\n").encode())
+    path.write_bytes(("﻿" if bom else "").encode() + text.replace("\n", "\r\n").encode())
 
 
 def test_discovery_y_reenvio_con_otro_nombre_se_omite(tmp_path):
@@ -50,7 +35,7 @@ def test_discovery_y_reenvio_con_otro_nombre_se_omite(tmp_path):
     assert procesar2 == [] and len(omitidos2) == 3
 
     procesar3, _ = select_files_to_process(files, already_processed_hashes=ya, modo="reproceso")
-    assert len(procesar3) == 2
+    assert len(procesar3) == 2  
 
 
 def test_lectura_csv_con_bom_separador_y_json_escapado(spark, tmp_path):
@@ -58,11 +43,11 @@ def test_lectura_csv_con_bom_separador_y_json_escapado(spark, tmp_path):
     contrato = cargar_contrato("movimientos")
     f = discover_files(str(tmp_path))[0]
     df = read_source_file(spark, f, contrato)
-    assert df.columns[0] == "evento_id"
+    assert df.columns[0] == "evento_id"  
     assert dict(df.dtypes)["fecha_evento"] == "string"
     rows = df.orderBy("evento_id").collect()
     assert rows[0]["payload"] == '{"estado_origen":"NA","estado_destino":"Vigente"}'
-    assert rows[1]["fecha_evento"] == "05/02/2024"
+    assert rows[1]["fecha_evento"] == "05/02/2024"  
 
 
 def test_metadatos_de_ingesta(spark, tmp_path):
