@@ -77,3 +77,5 @@ La integración continua (GitHub Actions, `.github/workflows/ci.yml`) ejecuta li
 - [Operación: workflow, reintentos, recuperación, backfill y acuerdos operativos](docs/operacion.md)
 - [Observabilidad: métricas, tablero, alertas y procedimiento de atención](docs/observabilidad.md)
 - [Gobierno, seguridad y privacidad](docs/gobierno.md)
+- [Pruebas, CI/CD y promoción entre ambientes](docs/cicd.md)
+- [Changelog](CHANGELOG.md)
