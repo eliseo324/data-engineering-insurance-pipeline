@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pyspark.sql import SparkSession
 
@@ -41,6 +41,12 @@ CONTROL_DDL: dict[str, str] = {
         diferencia DECIMAL(24,2), tolerancia DECIMAL(24,2), resultado STRING, detalle STRING,
         fecha_evaluacion TIMESTAMP
     """,
+    "publicaciones": """
+        run_id STRING, pipeline STRING, fecha_corte DATE, ambiente STRING, modo STRING, tipo_disparo STRING,
+        estado STRING, inicio_ejecucion TIMESTAMP, ts_publicacion TIMESTAMP, duracion_total_seg DOUBLE,
+        sla_objetivo TIMESTAMP, aplica_sla BOOLEAN, cumple_sla BOOLEAN, fecha_max_datos DATE,
+        frescura_dias INT, versiones_delta STRING, usuario STRING
+    """,
 }
 
 CONTROL_COMMENTS = {
@@ -50,6 +56,7 @@ CONTROL_COMMENTS = {
     "watermarks": "Marca de agua de la última ingesta procesada por dataset y capa (carga incremental).",
     "calidad_resultados": "Resultados de reglas de calidad por ejecución, dataset y regla.",
     "reconciliacion": "Reconciliación de conteos, totales monetarios y claves entre etapas.",
+    "publicaciones": "Publicaciones de productos Gold: versión Delta, frescura y cumplimiento del SLA.",
 }
 
 
@@ -76,7 +83,7 @@ def append_rows(spark: SparkSession, cfg: PipelineConfig, name: str, rows: list[
 
 
 def utcnow() -> datetime:
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+    return datetime.now(UTC).replace(tzinfo=None)
 
 
 def get_watermark(spark: SparkSession, cfg: PipelineConfig, dataset: str, capa: str):
@@ -161,7 +168,7 @@ class TaskRun:
         }
         try:
             append_rows(self.spark, self.cfg, "ejecuciones", [row])
-        except Exception as log_exc:  # noqa: BLE001 - no ocultar el error original del negocio
+        except Exception as log_exc:  
             if self.logger:
                 self.logger.error(f"No se pudo registrar la ejecución en ctl_ejecuciones: {log_exc}")
         if self.logger:
