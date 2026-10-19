@@ -9,7 +9,7 @@ from src.common.contracts import REPO_ROOT
 JOB_FILE = "resources/jobs/insurance_pipeline.job.yml"
 CRON_ESPERADO = "0 0 6 5 * ?"
 ZONA_ESPERADA = "America/Bogota"
-MAX_TAREAS_CONCURRENTES = 5 
+MAX_TAREAS_CONCURRENTES = 5  
 
 
 class JobSpecError(ValueError):
@@ -98,10 +98,14 @@ def validar_dag(spec: dict) -> None:
         "silver_movimientos": {"silver_clientes", "silver_polizas", "silver_recaudos", "silver_siniestros"},
         "gold_productos": {"silver_movimientos"},
         "publicacion": {"validaciones", "gold_productos"},
+        "observabilidad": {"publicacion"},
     }
     for tarea, requeridas in reglas.items():
         if tarea in claves and not requeridas <= ancestros(tareas, tarea):
             raise JobSpecError(f"{tarea} debe ejecutarse después de {sorted(requeridas)}")
+    obs = next((t for t in tareas if t["task_key"] == "observabilidad"), None)
+    if obs and obs.get("run_if") != "ALL_DONE":
+        raise JobSpecError("observabilidad debe usar run_if: ALL_DONE para registrar también las ejecuciones fallidas")
     sched = spec.get("schedule", {})
     if sched.get("quartz_cron_expression") != CRON_ESPERADO or sched.get("timezone_id") != ZONA_ESPERADA:
         raise JobSpecError("El schedule debe ser el día 5 de cada mes a las 06:00 America/Bogota")

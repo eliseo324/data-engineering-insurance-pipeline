@@ -77,13 +77,6 @@ Las alertas se evalúan al final de cada ejecución y las activas quedan en `ctl
 | OBS-07 | Duración anómala | P3 | Plataforma | Más del doble de la mediana de las ejecuciones anteriores (mínimo 3) |
 | OBS-08 | Cuarentena pendiente | P3 | Dueño del dato | Más de 50 registros en cuarentena sin gestionar |
 
-**Notificación en tiempo real (opcional):** para recibir correo por las alertas que no hacen fallar al job, crea una *SQL Alert* en **Alerts → Create alert** con:
-- consulta: `SELECT count(*) AS alertas_p1_p2 FROM workspace.default.ctl_alertas WHERE estado = 'ABIERTA' AND severidad IN ('P1','P2') AND fecha_evaluacion >= current_timestamp() - INTERVAL 1 DAY`;
-- condición: `alertas_p1_p2 > 0`;
-- programación: diaria;
-- destino: el correo del equipo.
-
-En el entorno corporativo el destino sería un webhook a Teams o Slack y a la herramienta de incidentes.
 
 ## 4. Procedimiento de atención
 

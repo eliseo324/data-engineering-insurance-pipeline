@@ -22,14 +22,14 @@ def test_job_programado_dia_5_a_las_6_hora_colombia(spec):
     assert spec["schedule"] == {"quartz_cron_expression": "0 0 6 5 * ?", "timezone_id": "America/Bogota",
                                 "pause_status": "UNPAUSED"}
     assert spec["name"] == "insurance-medallion-dev"
-    assert spec["max_concurrent_runs"] == 1 
+    assert spec["max_concurrent_runs"] == 1  
     assert spec["email_notifications"]["on_failure"] == [USER]
 
 
 def test_parametros_y_rutas_resueltas(spec):
     params = {p["name"]: p["default"] for p in spec["parameters"]}
     assert params["modo"] == "normal" and params["fecha_corte"] == ""
-    assert params["job_run_id"] == "{{job.run_id}}" 
+    assert params["job_run_id"] == "{{job.run_id}}"  
     assert params["catalog"] == "workspace"
     t = {x["task_key"]: x for x in spec["tasks"]}
     nb = t["silver_polizas"]["notebook_task"]
@@ -41,10 +41,12 @@ def test_dag_respeta_dependencias_de_datos(spec):
     niveles = orden_topologico(spec["tasks"])
     assert niveles[0] == ["preparar_entorno"]
     assert set(niveles[1]) == {f"bronze_{d}" for d in ("clientes", "polizas", "recaudos", "siniestros", "movimientos")}
-    assert niveles[-1] == ["publicacion"]
+    assert niveles[-2:] == [["publicacion"], ["observabilidad"]]
+    obs = next(t for t in spec["tasks"] if t["task_key"] == "observabilidad")
+    assert obs["run_if"] == "ALL_DONE"  
     assert {"bronze_movimientos", "silver_recaudos", "silver_siniestros"} <= ancestros(spec["tasks"], "silver_movimientos")
     assert "validaciones" in ancestros(spec["tasks"], "publicacion")
-    assert max(len(n) for n in niveles) <= 5  # límite de tareas concurrentes en Free Edition
+    assert max(len(n) for n in niveles) <= 5  
 
 
 def test_validacion_detecta_errores_de_definicion(spec):
@@ -108,4 +110,4 @@ def test_spec_aceptada_por_el_modelo_oficial_de_la_api(spec):
         return set()
 
     ida_vuelta = jobs.JobSettings.from_dict(spec).as_dict()
-    assert claves(spec) - claves(ida_vuelta) == set() 
+    assert claves(spec) - claves(ida_vuelta) == set()
