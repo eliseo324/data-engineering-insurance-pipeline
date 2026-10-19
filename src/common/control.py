@@ -47,6 +47,10 @@ CONTROL_DDL: dict[str, str] = {
         sla_objetivo TIMESTAMP, aplica_sla BOOLEAN, cumple_sla BOOLEAN, fecha_max_datos DATE,
         frescura_dias INT, versiones_delta STRING, usuario STRING
     """,
+    "alertas": """
+        run_id STRING, alerta_id STRING, nombre STRING, severidad STRING, responsable STRING,
+        descripcion STRING, detalle STRING, fecha_evaluacion TIMESTAMP, estado STRING
+    """,
 }
 
 CONTROL_COMMENTS = {
@@ -57,6 +61,7 @@ CONTROL_COMMENTS = {
     "calidad_resultados": "Resultados de reglas de calidad por ejecución, dataset y regla.",
     "reconciliacion": "Reconciliación de conteos, totales monetarios y claves entre etapas.",
     "publicaciones": "Publicaciones de productos Gold: versión Delta, frescura y cumplimiento del SLA.",
+    "alertas": "Alertas operativas y de datos disparadas por ejecución, con severidad y responsable.",
 }
 
 
