@@ -1,0 +1,141 @@
+resources:
+  jobs:
+    insurance_medallion:
+      name: insurance-medallion-${var.ambiente}
+      description: >
+        Pipeline mensual de pólizas y siniestros: ingesta Bronze, calidad y conformación Silver,
+        productos Gold, postcondiciones y publicación con control de SLA.
+      tags:
+        dominio: seguros
+        producto: insurance-medallion
+        ambiente: ${var.ambiente}
+      max_concurrent_runs: 1      
+      queue:
+        enabled: true             
+      timeout_seconds: 7200
+      health:
+        rules:
+          - metric: RUN_DURATION_SECONDS
+            op: GREATER_THAN
+            value: 3600          
+      schedule:
+        quartz_cron_expression: "0 0 6 5 * ?"   
+        timezone_id: America/Bogota
+        pause_status: ${var.pause_status}
+      email_notifications:
+        on_failure: [${workspace.current_user.userName}]
+        on_duration_warning_threshold_exceeded: [${workspace.current_user.userName}]
+      notification_settings:
+        no_alert_for_skipped_runs: true
+        no_alert_for_canceled_runs: false
+      parameters:
+        - {name: fecha_corte, default: ""}                
+        - {name: modo, default: normal}                   
+        - {name: ambiente, default: "${var.ambiente}"}
+        - {name: catalog, default: "${var.catalog}"}
+        - {name: schema, default: "${var.schema}"}
+        - {name: volume, default: "${var.volume}"}
+        - {name: job_run_id, default: "{{job.run_id}}"}   
+        - {name: tipo_disparo, default: "{{job.trigger.type}}"}  
+
+      tasks:
+        - task_key: preparar_entorno
+          description: Volumen, zona de aterrizaje y tablas de control (idempotente)
+          notebook_task:
+            notebook_path: ../../notebooks/00_setup.py
+            base_parameters: {organizar_archivos_raiz: "false"}
+          timeout_seconds: 600
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
+        - task_key: bronze_clientes
+          depends_on: [{task_key: preparar_entorno}]
+          notebook_task: {notebook_path: ../../notebooks/10_ingesta_bronze.py, base_parameters: {dataset: clientes}}
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: bronze_polizas
+          depends_on: [{task_key: preparar_entorno}]
+          notebook_task: {notebook_path: ../../notebooks/10_ingesta_bronze.py, base_parameters: {dataset: polizas}}
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: bronze_recaudos
+          depends_on: [{task_key: preparar_entorno}]
+          notebook_task: {notebook_path: ../../notebooks/10_ingesta_bronze.py, base_parameters: {dataset: recaudos}}
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: bronze_siniestros
+          depends_on: [{task_key: preparar_entorno}]
+          notebook_task: {notebook_path: ../../notebooks/10_ingesta_bronze.py, base_parameters: {dataset: siniestros}}
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+        - task_key: bronze_movimientos
+          depends_on: [{task_key: preparar_entorno}]
+          notebook_task: {notebook_path: ../../notebooks/10_ingesta_bronze.py, base_parameters: {dataset: movimientos}}
+          timeout_seconds: 900
+          max_retries: 2
+          min_retry_interval_millis: 300000
+          retry_on_timeout: true
+
+        - task_key: silver_clientes
+          depends_on: [{task_key: bronze_clientes}]
+          notebook_task: {notebook_path: ../../notebooks/20_silver.py, base_parameters: {dataset: clientes}}
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 300000
+        - task_key: silver_polizas
+          depends_on: [{task_key: bronze_polizas}, {task_key: silver_clientes}]
+          notebook_task: {notebook_path: ../../notebooks/20_silver.py, base_parameters: {dataset: polizas}}
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 300000
+        - task_key: silver_recaudos
+          depends_on: [{task_key: bronze_recaudos}, {task_key: silver_polizas}]
+          notebook_task: {notebook_path: ../../notebooks/20_silver.py, base_parameters: {dataset: recaudos}}
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 300000
+        - task_key: silver_siniestros
+          depends_on: [{task_key: bronze_siniestros}, {task_key: silver_polizas}]
+          notebook_task: {notebook_path: ../../notebooks/20_silver.py, base_parameters: {dataset: siniestros}}
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 300000
+        - task_key: silver_movimientos
+          depends_on:
+            - {task_key: bronze_movimientos}
+            - {task_key: silver_clientes}
+            - {task_key: silver_polizas}
+            - {task_key: silver_recaudos}
+            - {task_key: silver_siniestros}
+          notebook_task: {notebook_path: ../../notebooks/20_silver.py, base_parameters: {dataset: movimientos}}
+          timeout_seconds: 1200
+          max_retries: 1
+          min_retry_interval_millis: 300000
+
+        - task_key: gold_productos
+          depends_on: [{task_key: silver_movimientos}]
+          notebook_task: {notebook_path: ../../notebooks/30_gold.py}
+          timeout_seconds: 1800
+          max_retries: 1
+          min_retry_interval_millis: 300000
+        - task_key: validaciones
+          description: Postcondiciones sobre Silver y Gold; una falla de bloqueo detiene la publicación
+          depends_on: [{task_key: gold_productos}]
+          notebook_task: {notebook_path: ../../notebooks/40_validaciones.py}
+          timeout_seconds: 900
+          max_retries: 0           
+        - task_key: publicacion
+          description: Registra la publicación, versiones Delta, frescura y cumplimiento del SLA
+          depends_on: [{task_key: validaciones}]
+          notebook_task: {notebook_path: ../../notebooks/50_publicacion.py}
+          timeout_seconds: 600
+          max_retries: 1
+          min_retry_interval_millis: 60000
