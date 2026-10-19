@@ -1,0 +1,94 @@
+name: CD
+
+on:
+  push:
+    branches: [dll]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      ambiente:
+        description: Ambiente a redesplegar
+        type: choice
+        options: [qa, prod]
+        required: true
+      version:
+        description: Tag a desplegar (p. ej. v1.2.0). Para rollback, el tag anterior estable.
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: cd-${{ github.ref }}
+  cancel-in-progress: false   
+
+env:
+  DATABRICKS_AUTH_TYPE: github-oidc
+
+jobs:
+  ci:
+    if: vars.CD_HABILITADO == 'true' && github.event_name != 'workflow_dispatch'
+    uses: ./.github/workflows/ci.yml
+
+  dev:
+    name: Desplegar en DEV
+    needs: ci
+    if: github.ref == 'refs/heads/dll'
+    runs-on: ubuntu-latest
+    environment: dev
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t dev
+      - run: databricks bundle deploy -t dev
+
+  qa:
+    name: Desplegar en QA y probar
+    needs: ci
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    environment: qa            
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t qa
+      - run: databricks bundle deploy -t qa
+      - name: Prueba de integración (ejecución completa con postcondiciones)
+        run: databricks bundle run -t qa insurance_medallion --params "fecha_corte=${{ vars.FECHA_CORTE_PRUEBA }},modo=reproceso"
+
+  prod:
+    name: Desplegar en PROD
+    needs: qa
+    runs-on: ubuntu-latest
+    environment: prod        
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t prod
+      - run: databricks bundle deploy -t prod
+
+  redesplegar:
+    name: Redesplegar versión (rollback de código)
+    if: github.event_name == 'workflow_dispatch' && vars.CD_HABILITADO == 'true'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.ambiente }}
+    env:
+      DATABRICKS_HOST: ${{ vars.DATABRICKS_HOST }}
+      DATABRICKS_CLIENT_ID: ${{ vars.DATABRICKS_CLIENT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.version }}
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t ${{ inputs.ambiente }}
+      - run: databricks bundle deploy -t ${{ inputs.ambiente }}

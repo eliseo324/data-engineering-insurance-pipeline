@@ -1,0 +1,48 @@
+grupo_pii: pii_lectores          
+
+grupos:
+  ingenieria_datos:
+    descripcion: Construye y opera el pipeline (en producción el job corre con un service principal de este grupo)
+    miembros: []
+  analistas_negocio:
+    descripcion: Consumen productos Gold y la vista protegida de clientes
+    miembros: []
+  auditores_calidad:
+    descripcion: Revisan calidad, reconciliación, observabilidad y cuarentena protegida
+    miembros: []
+  pii_lectores:
+    descripcion: Acceso justificado a datos personales sin enmascarar (atención de titulares, cumplimiento)
+    miembros: []
+  evaluadores:
+    descripcion: Revisión de la prueba técnica, solo lectura y sin datos personales en claro
+    miembros: [yesidmontoya@sura.com.co, fjcarvajal@sura.com.co]
+
+tablas_pii: [bronze_clientes, silver_clientes, silver_cuarentena]
+
+permisos:
+  ingenieria_datos:
+    - {privilegios: [USE CATALOG], objeto: catalogo}
+    - {privilegios: [USE SCHEMA, SELECT, MODIFY, CREATE TABLE, CREATE FUNCTION, EXECUTE], objeto: esquema}
+    - {privilegios: [READ VOLUME, WRITE VOLUME], objeto: volumen}
+  analistas_negocio:
+    - {privilegios: [USE CATALOG], objeto: catalogo}
+    - {privilegios: [USE SCHEMA], objeto: esquema}
+    - {privilegios: [SELECT], tablas: [gold_poliza_360, gold_siniestralidad_mensual, gold_discrepancias, vw_clientes_protegida]}
+  auditores_calidad:
+    - {privilegios: [USE CATALOG], objeto: catalogo}
+    - {privilegios: [USE SCHEMA], objeto: esquema}
+    - {privilegios: [SELECT], tablas: [gold_calidad_pipeline, "ctl_*", "vw_obs_*", vw_cuarentena_protegida]}
+  pii_lectores:
+    - {privilegios: [USE CATALOG], objeto: catalogo}
+    - {privilegios: [USE SCHEMA], objeto: esquema}
+    - {privilegios: [SELECT], tablas: [silver_clientes, silver_cuarentena, vw_clientes_protegida, vw_cuarentena_protegida]}
+  evaluadores:
+    - {privilegios: [USE CATALOG], objeto: catalogo}
+    - {privilegios: [USE SCHEMA], objeto: esquema}
+    - {privilegios: [SELECT], tablas: ["bronze_*", "silver_*", "gold_*", "ctl_*", "vw_*"], excluir: "tablas_pii"}
+    - {privilegios: [EXECUTE], funciones: ["fn_*"]}
+    - {privilegios: [READ VOLUME], objeto: volumen}
+
+retencion_pii:
+  delta.deletedFileRetentionDuration: interval 7 days
+  delta.logRetentionDuration: interval 30 days

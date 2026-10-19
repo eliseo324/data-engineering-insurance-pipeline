@@ -1,0 +1,32 @@
+dataset: clientes
+version: "1.0.0"
+owner: dominio-clientes
+descripcion: >
+  Maestro de clientes proveniente del CRM. Una fila por cliente o por versión del cliente
+  (cambios de segmento, ciudad o datos de contacto). Contiene datos personales.
+fuente:
+  sistema: CRM
+  formato: csv
+  separador: ";"
+  encoding: UTF-8
+  subcarpeta: clientes
+  patron_archivo: "*.csv"
+clave_negocio: [cliente_id]
+orden_version: [fecha_actualizacion]
+historizacion: scd2
+atributos_scd2: [tipo_documento, numero_documento, fecha_nacimiento, ciudad, segmento, correo, telefono]
+columnas_monetarias: []
+columnas:
+  - {nombre: cliente_id, tipo: string, requerido: true, descripcion: "Identificador único del cliente en el CRM", patron: "^CLI[0-9]{6}$"}
+  - {nombre: tipo_documento, tipo: string, requerido: true, descripcion: "Tipo de documento", valores_permitidos: [CC, CE, NIT, PP]}
+  - {nombre: numero_documento, tipo: string, requerido: true, pii: alta, descripcion: "Número de documento de identidad"}
+  - {nombre: fecha_nacimiento, tipo: date, requerido: false, pii: media, descripcion: "Fecha de nacimiento (constitución para NIT)"}
+  - {nombre: ciudad, tipo: string, requerido: false, descripcion: "Ciudad de residencia"}
+  - {nombre: segmento, tipo: string, requerido: true, descripcion: "Segmento comercial", valores_permitidos: [Personas, Independiente, Pyme, Corporativo]}
+  - {nombre: correo, tipo: string, requerido: false, pii: alta, descripcion: "Correo electrónico de contacto"}
+  - {nombre: telefono, tipo: string, requerido: false, pii: alta, descripcion: "Teléfono de contacto"}
+  - {nombre: fecha_actualizacion, tipo: date, requerido: true, descripcion: "Fecha de la última modificación en el CRM; ordena las versiones"}
+  - {nombre: origen, tipo: string, requerido: false, descripcion: "Sistema origen del registro"}
+sla:
+  frecuencia: mensual
+  frescura_max_dias: 5

@@ -1,0 +1,36 @@
+dataset: polizas
+version: "1.0.0"
+owner: dominio-polizas
+descripcion: >
+  Pólizas emitidas en el core de pólizas. Una fila por póliza o por movimiento de estado;
+  en Silver se conserva el estado vigente más reciente por póliza (historia vía movimientos
+  y snapshots mensuales en Gold).
+fuente:
+  sistema: CORE_POLIZAS
+  formato: csv
+  separador: ";"
+  encoding: UTF-8
+  subcarpeta: polizas
+  patron_archivo: "*.csv"
+clave_negocio: [poliza_id]
+orden_version: [fecha_actualizacion]
+historizacion: tipo1
+columnas_monetarias: [prima]
+referencias:
+  - {alias: cliente, columna: cliente_id, tabla: silver_clientes, columna_ref: cliente_id}
+columnas:
+  - {nombre: poliza_id, tipo: string, requerido: true, descripcion: "Identificador único de la póliza", patron: "^POL[0-9]{7}$"}
+  - {nombre: cliente_id, tipo: string, requerido: true, descripcion: "Tomador de la póliza (FK a clientes)"}
+  - {nombre: producto, tipo: string, requerido: true, descripcion: "Producto o ramo", valores_permitidos: [Autos, Salud, Vida, Hogar, Empresarial, Responsabilidad civil]}
+  - {nombre: sucursal, tipo: string, requerido: true, descripcion: "Sucursal que emite"}
+  - {nombre: fecha_inicio_vigencia, tipo: date, requerido: true, descripcion: "Inicio de vigencia (inclusive)"}
+  - {nombre: fecha_fin_vigencia, tipo: date, requerido: true, descripcion: "Fin de vigencia (inclusive)"}
+  - {nombre: estado, tipo: string, requerido: true, descripcion: "Estado reportado por el core", valores_permitidos: [Vigente, Vencida, Cancelada, Renovada]}
+  - {nombre: prima, tipo: "decimal(18,2)", requerido: true, descripcion: "Prima emitida total de la vigencia, en la moneda indicada"}
+  - {nombre: moneda, tipo: string, requerido: true, descripcion: "Moneda ISO 4217", valores_permitidos: [COP]}
+  - {nombre: canal, tipo: string, requerido: false, descripcion: "Canal de venta"}
+  - {nombre: fecha_actualizacion, tipo: date, requerido: true, descripcion: "Fecha de última modificación en el core"}
+  - {nombre: origen, tipo: string, requerido: false, descripcion: "Sistema origen del registro"}
+sla:
+  frecuencia: mensual
+  frescura_max_dias: 5

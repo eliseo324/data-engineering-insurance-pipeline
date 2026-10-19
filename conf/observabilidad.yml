@@ -1,0 +1,54 @@
+
+consumo:
+  dbu_por_hora_tarea: 2.0
+  usd_por_dbu: 0.35
+
+responsables:
+  ingenieria_datos: equipo-ingenieria-datos@empresa.com
+  owner_datos: dominio-propietario-del-dato
+  plataforma: equipo-plataforma-datos@empresa.com
+
+alertas:
+  - id: OBS-01
+    nombre: ejecucion_fallida
+    severidad: P2
+    responsable: ingenieria_datos
+    descripcion: La última ejecución del pipeline tiene tareas fallidas
+  - id: OBS-02
+    nombre: sla_incumplido
+    severidad: P1
+    responsable: ingenieria_datos
+    descripcion: La última publicación programada se entregó después del SLA (día 5, 08:00)
+  - id: OBS-03
+    nombre: publicacion_mensual_pendiente
+    severidad: P1
+    responsable: ingenieria_datos
+    descripcion: Pasó el SLA del mes y no existe publicación para el corte del mes anterior
+    solo_ambientes: [prod]     
+  - id: OBS-04
+    nombre: frescura_vencida
+    severidad: P3
+    responsable: owner_datos
+    descripcion: El dato más reciente de una fuente supera la frescura máxima de su contrato
+  - id: OBS-05
+    nombre: advertencias_calidad
+    severidad: P3
+    responsable: owner_datos
+    descripcion: Reglas de calidad de advertencia superaron su umbral en la última ejecución
+  - id: OBS-06
+    nombre: cambio_esquema
+    severidad: P2
+    responsable: owner_datos
+    descripcion: Se detectó evolución de esquema en archivos recibidos (columnas nuevas o faltantes)
+  - id: OBS-07
+    nombre: duracion_anomala
+    severidad: P3
+    responsable: plataforma
+    descripcion: La última ejecución duró más del doble de la mediana histórica
+    factor: 2.0
+  - id: OBS-08
+    nombre: cuarentena_pendiente
+    severidad: P3
+    responsable: owner_datos
+    descripcion: Hay registros en cuarentena pendientes de gestión por encima del umbral
+    umbral_registros: 50

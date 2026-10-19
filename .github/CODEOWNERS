@@ -1,0 +1,17 @@
+# Revisores obligatorios por área (se exigen con la regla "Require review from Code Owners" en `dll`).
+# Reemplazar los equipos por los de la organización. En un repositorio personal, el propietario.
+
+*                          @org/ingenieria-datos
+
+# Contratos y reglas de calidad: también los aprueba el dueño del dato
+/conf/contracts/           @org/ingenieria-datos @org/duenos-datos
+/conf/quality_rules.yml    @org/ingenieria-datos @org/duenos-datos
+
+# Permisos y protección de datos personales: también Seguridad de la Información
+/conf/gobierno.yml         @org/ingenieria-datos @org/seguridad-informacion
+/src/governance/           @org/ingenieria-datos @org/seguridad-informacion
+
+# Despliegue y CI/CD: también Plataforma
+/databricks.yml            @org/ingenieria-datos @org/plataforma-datos
+/resources/                @org/ingenieria-datos @org/plataforma-datos
+/.github/workflows/        @org/ingenieria-datos @org/plataforma-datos

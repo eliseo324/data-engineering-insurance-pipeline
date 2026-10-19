@@ -1,0 +1,189 @@
+defaults:
+  umbral_cuarentena_pct: 5.0
+  umbral_pct_automaticas: 2.0
+  umbral_pct_clave: 1.0
+
+datasets:
+  clientes:
+    overrides:
+      clientes.COMP.numero_documento: {accion: marcar}
+    reglas:
+      - id: clientes.VAL.fecha_nacimiento
+        dimension: validez
+        descripcion: La fecha de nacimiento no puede ser posterior a la fecha de corte
+        expresion: fecha_nacimiento <= ${fecha_corte}
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 0
+      - id: clientes.OPO.fecha_actualizacion
+        dimension: oportunidad
+        descripcion: La actualización no puede ser posterior a la fecha de corte (dato del futuro)
+        expresion: fecha_actualizacion <= ${fecha_corte}
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 0
+
+  polizas:
+    reglas:
+      - id: polizas.VAL.prima_positiva
+        dimension: validez
+        descripcion: La prima emitida debe ser mayor que cero (D-10)
+        expresion: prima > 0
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: polizas.CON.vigencia
+        dimension: consistencia
+        descripcion: El fin de vigencia no puede ser anterior al inicio (D-14)
+        expresion: fecha_fin_vigencia >= fecha_inicio_vigencia
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: polizas.RI.cliente
+        dimension: integridad_referencial
+        descripcion: El tomador debe existir en clientes; si no, se conserva como cliente no identificado (D-12)
+        expresion: _ref_cliente OR _ref_cliente_cuarentena
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 2.0
+      - id: polizas.OPO.fecha_actualizacion
+        dimension: oportunidad
+        descripcion: La actualización no puede ser posterior a la fecha de corte
+        expresion: fecha_actualizacion <= ${fecha_corte}
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 0
+
+  recaudos:
+    reglas:
+      - id: recaudos.VAL.valor_positivo
+        dimension: validez
+        descripcion: El valor del recaudo debe ser mayor que cero; las reversiones se indican con el estado (D-10)
+        expresion: valor > 0
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: recaudos.RI.poliza
+        dimension: integridad_referencial
+        descripcion: El pago debe corresponder a una póliza conocida; pagos sin correspondencia van a cuarentena (D-13)
+        expresion: _ref_poliza OR _ref_poliza_cuarentena
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: recaudos.RI.poliza_valida
+        dimension: integridad_referencial
+        descripcion: La póliza del pago existe pero está en cuarentena (no es huérfano; queda pendiente de la póliza)
+        expresion: NOT _ref_poliza_cuarentena OR _ref_poliza
+        severidad: informativa
+        accion: marcar
+        umbral_pct: 100
+      - id: recaudos.CON.pago_en_vigencia
+        dimension: consistencia
+        descripcion: Pago fuera de la vigencia de la póliza (puede ser anticipo o mora; D-11)
+        expresion: fecha_pago BETWEEN _refcol_poliza_fecha_inicio_vigencia AND _refcol_poliza_fecha_fin_vigencia
+        severidad: informativa
+        accion: marcar
+        umbral_pct: 100
+      - id: recaudos.OPO.fecha_pago
+        dimension: oportunidad
+        descripcion: La fecha de pago no puede ser posterior a la fecha de corte
+        expresion: fecha_pago <= ${fecha_corte}
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 0
+
+  siniestros:
+    overrides:
+      siniestros.COMP.estado: {accion: marcar}
+    reglas:
+      - id: siniestros.VAL.pagado_no_negativo
+        dimension: validez
+        descripcion: El valor pagado no puede ser negativo (D-10)
+        expresion: valor_pagado >= 0
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: siniestros.VAL.reserva_no_negativa
+        dimension: validez
+        descripcion: La reserva no puede ser negativa
+        expresion: valor_reserva >= 0
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: siniestros.RI.poliza
+        dimension: integridad_referencial
+        descripcion: El siniestro debe corresponder a una póliza conocida (D-13)
+        expresion: _ref_poliza OR _ref_poliza_cuarentena
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: siniestros.RI.poliza_valida
+        dimension: integridad_referencial
+        descripcion: La póliza del siniestro existe pero está en cuarentena
+        expresion: NOT _ref_poliza_cuarentena OR _ref_poliza
+        severidad: informativa
+        accion: marcar
+        umbral_pct: 100
+      - id: siniestros.CON.aviso_posterior_ocurrencia
+        dimension: consistencia
+        descripcion: El aviso no puede ser anterior a la ocurrencia (D-17)
+        expresion: fecha_aviso >= fecha_ocurrencia
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 1.0
+      - id: siniestros.CON.ocurrencia_en_vigencia
+        dimension: consistencia
+        descripcion: Ocurrencia fuera de la vigencia de la póliza (D-11)
+        expresion: fecha_ocurrencia BETWEEN _refcol_poliza_fecha_inicio_vigencia AND _refcol_poliza_fecha_fin_vigencia
+        severidad: informativa
+        accion: marcar
+        umbral_pct: 100
+      - id: siniestros.OPO.fecha_aviso
+        dimension: oportunidad
+        descripcion: El aviso no puede ser posterior a la fecha de corte (D-17)
+        expresion: fecha_aviso <= ${fecha_corte}
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 2.0
+
+  movimientos:
+    reglas:
+      - id: movimientos.VAL.payload
+        dimension: validez
+        descripcion: El payload debe ser un JSON con estado_destino
+        expresion: estado_destino IS NOT NULL
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: movimientos.CON.tipo_evento_entidad
+        dimension: consistencia
+        descripcion: El tipo de evento debe corresponder a la entidad
+        expresion: >-
+          (entidad = 'CLIENTE' AND tipo_evento IN ('ACTUALIZACION_DATOS','CAMBIO_SEGMENTO'))
+          OR (entidad = 'POLIZA' AND tipo_evento IN ('CREACION','CAMBIO_ESTADO','RENOVACION','CANCELACION'))
+          OR (entidad = 'RECAUDO' AND tipo_evento IN ('PAGO_APLICADO','PAGO_PENDIENTE','PAGO_REVERSADO'))
+          OR (entidad = 'SINIESTRO' AND tipo_evento IN ('AVISO','PAGO','ACTUALIZACION_RESERVA','CIERRE','REAPERTURA'))
+        severidad: advertencia
+        accion: cuarentena
+        umbral_pct: 1.0
+      - id: movimientos.RI.entidad
+        dimension: integridad_referencial
+        descripcion: La entidad referida por el evento debe existir
+        expresion: _ref_entidad OR _ref_entidad_cuarentena
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 1.0
+      - id: movimientos.CON.ingesta_posterior_evento
+        dimension: consistencia
+        descripcion: Un evento no puede llegar al bus antes de ocurrir (D-17)
+        expresion: fecha_ingesta >= fecha_evento
+        severidad: advertencia
+        accion: marcar
+        umbral_pct: 1.0
+      - id: movimientos.OPO.evento_tardio
+        dimension: oportunidad
+        descripcion: Evento recibido más de 30 días después de ocurrido (movimiento tardío)
+        expresion: datediff(fecha_ingesta, fecha_evento) <= 30
+        severidad: informativa
+        accion: marcar
+        umbral_pct: 100

@@ -1,0 +1,39 @@
+dataset: movimientos
+version: "1.0.0"
+owner: dominio-operaciones
+descripcion: >
+  Eventos de negocio sobre clientes, pólizas, recaudos y siniestros. Una fila por evento.
+  Es un log append-only: los eventos no se actualizan; los reenvíos se detectan por clave de negocio.
+fuente:
+  sistema: BUS_EVENTOS
+  formato: csv
+  separador: ";"
+  encoding: UTF-8
+  subcarpeta: movimientos
+  patron_archivo: "*.csv"
+clave_negocio: [entidad, id_entidad, tipo_evento, fecha_evento, secuencia, payload]
+orden_version: [fecha_ingesta]
+historizacion: append_only
+columnas_monetarias: []
+referencia_polimorfica:
+  alias: entidad
+  columna_tipo: entidad
+  columna_id: id_entidad
+  destinos:
+    CLIENTE: {tabla: silver_clientes, columna_ref: cliente_id}
+    POLIZA: {tabla: silver_polizas, columna_ref: poliza_id}
+    RECAUDO: {tabla: silver_recaudos, columna_ref: recaudo_id}
+    SINIESTRO: {tabla: silver_siniestros, columna_ref: siniestro_id}
+columnas:
+  - {nombre: evento_id, tipo: string, requerido: true, descripcion: "Identificador técnico del evento"}
+  - {nombre: entidad, tipo: string, requerido: true, descripcion: "Entidad afectada", valores_permitidos: [CLIENTE, POLIZA, RECAUDO, SINIESTRO]}
+  - {nombre: id_entidad, tipo: string, requerido: true, descripcion: "Identificador de la entidad afectada (FK polimórfica)"}
+  - {nombre: tipo_evento, tipo: string, requerido: true, descripcion: "Tipo de evento de negocio"}
+  - {nombre: fecha_evento, tipo: date, requerido: true, descripcion: "Fecha en que ocurrió el evento en el negocio"}
+  - {nombre: fecha_ingesta, tipo: date, requerido: true, descripcion: "Fecha en que el evento llegó al bus"}
+  - {nombre: payload, tipo: string, requerido: true, descripcion: "Atributos del evento en JSON (estado_origen, estado_destino, usuario_proceso)"}
+  - {nombre: secuencia, tipo: int, requerido: false, descripcion: "Secuencia del evento informada por el productor"}
+  - {nombre: origen, tipo: string, requerido: false, descripcion: "Sistema origen del registro"}
+sla:
+  frecuencia: mensual
+  frescura_max_dias: 5
