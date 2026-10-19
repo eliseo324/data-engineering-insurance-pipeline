@@ -8,8 +8,8 @@ gobierno y .
 ## Resumen de la Arquitectura
 
 ```
-CSV (/Volumes/workspace/default/volume1/<dataset.csv>)
-   │  ingesta parametrizada, idempotente por hash de archivo
+CSV (/volume1/raw/<dataset>)
+   │  ingesta parametrizada, idempotente por hash de archivo, se evita rutas, fechas y nombres rígidos
    
 BRONZE  bronze_<dataset>      copia fiel (STRING) + metadatos de ingesta
    │  tipado, dedup, reglas de calidad, cuarentena, conformación de claves, SCD2
