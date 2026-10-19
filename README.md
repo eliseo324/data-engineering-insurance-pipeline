@@ -32,7 +32,7 @@ De acuerdo a los requerimientos se propone lo siguiente:
 | `src/ingestion` | Descubrimiento de archivos e ingesta Bronze |
 | `src/transformations` | Transformaciones Silver y Gold |
 | `src/quality` | Perfilamiento, motor de reglas, cuarentena y reconciliación |
-| `conf/contracts` | Data contracts YAML por dataset (esquema, tipos, protección de información sensible, claves, SLA) |
+| `conf/contracts` | Data contracts YAML por dataset (esquema, tipos, protección de información sensible(PII), claves, SLA) |
 | `notebooks` | Notebooks Databricks (formato fuente `.py`) que orquestan los módulos |
 | `tests` | Pruebas unitarias (pytest + Spark local) |
 | `resources` | Definición del workflow (Databricks Asset Bundles) |
@@ -71,5 +71,5 @@ pytest -v
 
 La integración continua (GitHub Actions, `.github/workflows/ci.yml`) ejecuta lint y pruebas en cada PR hacia `dll`.
 
-<!-- ## Documentación
-- [Supuestos, decisiones y deuda técnica](docs/decisiones.md) -->
+## Documentación
+- [Supuestos, decisiones y deuda técnica](docs/decisiones.md)

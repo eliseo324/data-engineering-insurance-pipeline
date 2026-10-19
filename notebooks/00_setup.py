@@ -85,7 +85,3 @@ display(spark.createDataFrame(
 
 ensure_control_tables(spark, cfg)
 display(spark.sql(f"SHOW TABLES IN {cfg.catalog}.{cfg.schema} LIKE 'ctl_*'"))
-
-# COMMAND ----------
-
-
