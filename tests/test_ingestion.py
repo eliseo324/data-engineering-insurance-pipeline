@@ -31,7 +31,7 @@ ROW2 = 'EVT2;POLIZA;POL0000001;CANCELACION;05/02/2024;2024-02-06;"{""estado_orig
 
 
 def _write(path, text, bom=True):
-    path.write_bytes(("﻿" if bom else "").encode() + text.replace("\n", "\r\n").encode())
+    path.write_bytes(("_" if bom else "").encode() + text.replace("\n", "\r\n").encode())
 
 
 def test_discovery_y_reenvio_con_otro_nombre_se_omite(tmp_path):
