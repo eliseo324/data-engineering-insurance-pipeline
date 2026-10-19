@@ -180,6 +180,35 @@ La tarea `observabilidad` usa `run_if: ALL_DONE`, así que las ejecuciones falli
 ### D-32 · Consumo estimado con respaldo real
 Free Edition no expone `system.billing` y no tiene costo. `vw_obs_consumo` estima el consumo con duración × DBU/hora × USD/DBU, con supuestos explícitos en `conf/observabilidad.yml`. Si las *system tables* están disponibles, se publica además `vw_obs_consumo_real` por `job_run_id`, que es la fuente corporativa.
 
+### D-33 · Gobierno como código y estado deseado
+La documentación (comentarios y etiquetas), la protección de datos personales, la retención y los permisos se generan desde los contratos y `conf/gobierno.yml`. La tarea `gobierno` del job los reaplica en cada ejecución.
+
+Los permisos funcionan como estado deseado: se revocan los privilegios previos de esquema de los grupos gestionados y se otorgan exactamente los declarados. Esto evita la deriva de permisos manuales y deja cada cambio de acceso revisable en un Pull Request.
+
+### D-34 · Datos personales: vistas protegidas por defecto, column masks opcionales
+- Las tablas con datos personales en claro (`bronze_clientes`, `silver_clientes`, `silver_cuarentena`) solo las leen `ingenieria_datos` y `pii_lectores`.
+- Los demás roles consumen `vw_clientes_protegida` y `vw_cuarentena_protegida`, que enmascaran con funciones de Unity Catalog según la pertenencia al grupo `pii_lectores`.
+- Las *column masks* nativas usan las mismas funciones y quedan como opción (`aplicar_column_masks`). En Free Edition no hay grupos de cuenta gestionados y su efecto sobre los `MERGE` del pipeline debe validarse antes en el entorno corporativo.
+
+### D-35 · Supresión de atributos personales conservando la clave seudónima
+Ante una solicitud de supresión (Ley 1581 de 2012), se anulan documento, fecha de nacimiento, correo y teléfono en todas las capas y se conserva `cliente_id`. Las pólizas y siniestros que deben conservarse por obligación regulatoria siguen íntegros sin identificar a la persona.
+
+La eliminación física se completa con `VACUUM` tras la retención de versiones de 7 días que se configuró en las tablas con datos personales.
+
+### D-36 · Control automático de secretos
+`tests/test_sin_secretos.py` busca tokens de Databricks y GitHub, llaves privadas, claves de Azure Storage, contraseñas literales y archivos de datos versionados. La CI falla si encuentra alguno.
+
+### D-37 · El tag semántico es el artefacto que se promueve
+El mismo tag `vX.Y.Z` (código, notebooks, configuración y definición del job) se despliega en QA y luego en PROD. Entre ambientes solo cambian las variables del bundle. Lo que se probó en QA es exactamente lo que llega a PROD, y el rollback de código consiste en redesplegar el tag anterior.
+
+### D-38 · Compatibilidad de contratos controlada en la CI
+Cada PR compara los contratos con su versión en `dll`. Un cambio incompatible (columna eliminada, cambio de tipo, columna que pasa a requerida, dominio reducido, cambio de clave) exige subir la versión MAYOR. Así la ruptura queda explícita y la revisa el dueño del dato (CODEOWNERS).
+
+### D-39 · Autenticación de CI/CD por federación OIDC
+GitHub Actions se autentica en Databricks con *service principals* por ambiente mediante OIDC (`DATABRICKS_AUTH_TYPE = github-oidc`). No existen tokens de larga vida que rotar o filtrar. Los jobs de CD solo se activan cuando el repositorio declara `CD_HABILITADO = true`.
+
+### D-40 · Rollback de datos con time travel en lugar de recálculo
+Revertir un producto Gold publicado restaura las versiones Delta registradas en `ctl_publicaciones`, con `RESTORE TABLE ... TO VERSION AS OF`. Es inmediato, auditable y reversible, y no depende de que la causa del error ya esté corregida. Después se corrige la causa y se republica el corte.
 ---
 
 ## 3. Decisiones de calidad
@@ -210,3 +239,4 @@ Al procesar el historial del cliente (SCD2), el sistema ignora datos en dos situ
 - **DT-03:** Sin flujo automatizado para corregir datos en cuarentena.
 Los registros con errores se identifican y quedan en estado PENDIENTE, pero no existe un mecanismo para corregirlos y volverlos a procesar. Hace falta crear una tabla de correcciones aprobadas que ejecute un flujo automático de reingreso a las tuberías de datos.
 - **DT-04:** la fecha de cancelación se infiere (evento `CANCELACION`, luego `fecha_actualizacion`, luego fin de vigencia) porque el core no la informa. Se debe acordar en el contrato de pólizas que el productor envíe esa fecha.
+- **DT-05:** los archivos de `raw/` que siguen dentro de su retención conservan los datos personales de un titular suprimido, y un reproceso completo los reintroduciría. Hace falta una tabla de supresiones consultada por Silver y la depuración de la carpeta.

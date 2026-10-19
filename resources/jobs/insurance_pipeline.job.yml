@@ -9,34 +9,34 @@ resources:
         dominio: seguros
         producto: insurance-medallion
         ambiente: ${var.ambiente}
-      max_concurrent_runs: 1     
+      max_concurrent_runs: 1    
       queue:
-        enabled: true               
+        enabled: true             
       timeout_seconds: 7200
       health:
         rules:
           - metric: RUN_DURATION_SECONDS
             op: GREATER_THAN
-            value: 3600            
+            value: 3600
       schedule:
-        quartz_cron_expression: "0 0 6 5 * ?"   
+        quartz_cron_expression: "0 0 6 5 * ?"  
         timezone_id: America/Bogota
         pause_status: ${var.pause_status}
       email_notifications:
-        on_failure: [${workspace.current_user.userName}]
-        on_duration_warning_threshold_exceeded: [${workspace.current_user.userName}]
+        on_failure: ["${workspace.current_user.userName}"]
+        on_duration_warning_threshold_exceeded: ["${workspace.current_user.userName}"]
       notification_settings:
         no_alert_for_skipped_runs: true
         no_alert_for_canceled_runs: false
       parameters:
-        - {name: fecha_corte, default: ""}                  
-        - {name: modo, default: normal}                     
+        - {name: fecha_corte, default: ""}          
+        - {name: modo, default: normal}             
         - {name: ambiente, default: "${var.ambiente}"}
         - {name: catalog, default: "${var.catalog}"}
         - {name: schema, default: "${var.schema}"}
         - {name: volume, default: "${var.volume}"}
-        - {name: job_run_id, default: "{{job.run_id}}"}    
-        - {name: tipo_disparo, default: "{{job.trigger.type}}"}  
+        - {name: job_run_id, default: "{{job.run_id}}"} 
+        - {name: tipo_disparo, default: "{{job.trigger.type}}"} 
 
       tasks:
         - task_key: preparar_entorno
@@ -140,9 +140,19 @@ resources:
           max_retries: 1
           min_retry_interval_millis: 60000
 
+        - task_key: gobierno
+          description: Comentarios, etiquetas PII, enmascaramiento, retención y permisos por rol en Unity Catalog
+          depends_on: [{task_key: publicacion}]
+          notebook_task:
+            notebook_path: ../../notebooks/80_gobierno.py
+            base_parameters: {modo_gobierno: aplicar, aplicar_column_masks: "false", gestionar_grupos: "true"}
+          timeout_seconds: 900
+          max_retries: 1
+          min_retry_interval_millis: 60000
+
         - task_key: observabilidad
           description: Vistas de observabilidad y alertas; corre aunque una tarea anterior falle
-          depends_on: [{task_key: publicacion}]
+          depends_on: [{task_key: gobierno}]
           run_if: ALL_DONE
           notebook_task: {notebook_path: ../../notebooks/60_observabilidad.py}
           timeout_seconds: 600

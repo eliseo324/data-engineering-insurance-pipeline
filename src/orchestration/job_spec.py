@@ -98,7 +98,8 @@ def validar_dag(spec: dict) -> None:
         "silver_movimientos": {"silver_clientes", "silver_polizas", "silver_recaudos", "silver_siniestros"},
         "gold_productos": {"silver_movimientos"},
         "publicacion": {"validaciones", "gold_productos"},
-        "observabilidad": {"publicacion"},
+        "gobierno": {"publicacion"},
+        "observabilidad": {"publicacion", "gobierno"},
     }
     for tarea, requeridas in reglas.items():
         if tarea in claves and not requeridas <= ancestros(tareas, tarea):

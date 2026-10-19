@@ -22,14 +22,14 @@ def test_job_programado_dia_5_a_las_6_hora_colombia(spec):
     assert spec["schedule"] == {"quartz_cron_expression": "0 0 6 5 * ?", "timezone_id": "America/Bogota",
                                 "pause_status": "UNPAUSED"}
     assert spec["name"] == "insurance-medallion-dev"
-    assert spec["max_concurrent_runs"] == 1  
+    assert spec["max_concurrent_runs"] == 1 
     assert spec["email_notifications"]["on_failure"] == [USER]
 
 
 def test_parametros_y_rutas_resueltas(spec):
     params = {p["name"]: p["default"] for p in spec["parameters"]}
     assert params["modo"] == "normal" and params["fecha_corte"] == ""
-    assert params["job_run_id"] == "{{job.run_id}}"  
+    assert params["job_run_id"] == "{{job.run_id}}" 
     assert params["catalog"] == "workspace"
     t = {x["task_key"]: x for x in spec["tasks"]}
     nb = t["silver_polizas"]["notebook_task"]
@@ -41,9 +41,9 @@ def test_dag_respeta_dependencias_de_datos(spec):
     niveles = orden_topologico(spec["tasks"])
     assert niveles[0] == ["preparar_entorno"]
     assert set(niveles[1]) == {f"bronze_{d}" for d in ("clientes", "polizas", "recaudos", "siniestros", "movimientos")}
-    assert niveles[-2:] == [["publicacion"], ["observabilidad"]]
+    assert niveles[-3:] == [["publicacion"], ["gobierno"], ["observabilidad"]]
     obs = next(t for t in spec["tasks"] if t["task_key"] == "observabilidad")
-    assert obs["run_if"] == "ALL_DONE"  
+    assert obs["run_if"] == "ALL_DONE" 
     assert {"bronze_movimientos", "silver_recaudos", "silver_siniestros"} <= ancestros(spec["tasks"], "silver_movimientos")
     assert "validaciones" in ancestros(spec["tasks"], "publicacion")
     assert max(len(n) for n in niveles) <= 5  
@@ -77,7 +77,7 @@ def test_sla_dia_5_a_las_8_hora_colombia():
     tarde = evaluar_sla(date(2026, 8, 31), datetime(2026, 9, 5, 14, 0), "PERIODIC")
     manual = evaluar_sla(date(2026, 8, 31), datetime(2026, 10, 19, 5, 0), "ONE_TIME")
     assert a_tiempo["cumple_sla"] is True and tarde["cumple_sla"] is False
-    assert manual["aplica_sla"] is False and manual["cumple_sla"] is None 
+    assert manual["aplica_sla"] is False and manual["cumple_sla"] is None  
 
 
 def _csv(path, filas):
