@@ -13,6 +13,7 @@ dev = [
     "pyspark==4.0.1",
     "pytest==8.3.3",
     "ruff==0.6.9",
+    "databricks-sdk==0.154.0",
 ]
 
 [tool.setuptools.packages.find]
