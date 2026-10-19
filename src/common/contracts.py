@@ -1,9 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 TIPOS_SOPORTADOS = ("string", "date", "int", "bigint", "double")
+
 
 class ContractError(ValueError):
     """Contrato mal definido o esquema recibido incompatible con el contrato."""
@@ -26,10 +29,28 @@ class Columna:
 
 @dataclass(frozen=True)
 class Referencia:
+    """FK simple: `columna` debe existir en `tabla.columna_ref`. `traer` = columnas del padre útiles
+    para reglas (p. ej. la vigencia de la póliza para validar pagos fuera de vigencia)."""
+
     alias: str
     columna: str
     tabla: str
     columna_ref: str
+    traer: tuple[str, ...] = ()
+
+    @property
+    def dataset_ref(self) -> str:
+        return self.tabla.removeprefix("silver_")
+
+
+@dataclass(frozen=True)
+class ReferenciaPolimorfica:
+    """FK cuyo destino depende del valor de otra columna (movimientos.entidad -> tabla)."""
+
+    alias: str
+    columna_tipo: str
+    columna_id: str
+    destinos: dict
 
 
 @dataclass(frozen=True)
@@ -46,9 +67,9 @@ class Contrato:
     columnas_monetarias: tuple[str, ...] = ()
     referencias: tuple[Referencia, ...] = ()
     atributos_scd2: tuple[str, ...] = ()
+    referencia_polimorfica: ReferenciaPolimorfica | None = None
     sla: dict = field(default_factory=dict)
 
-    # ---------- Accesores ----------
     @property
     def nombres(self) -> list[str]:
         return [c.nombre for c in self.columnas]
@@ -67,7 +88,6 @@ class Contrato:
                 return c
         raise KeyError(nombre)
 
-    # ---------- Validación de esquema ----------
     def comparar_esquema(self, columnas_recibidas: list[str]) -> dict:
         """Compara el encabezado recibido contra el contrato.
 
@@ -124,8 +144,13 @@ def contrato_desde_dict(raw: dict, origen: str = "<dict>") -> Contrato:
         columnas=columnas,
         historizacion=raw.get("historizacion", "tipo1"),
         columnas_monetarias=tuple(raw.get("columnas_monetarias", [])),
-        referencias=tuple(Referencia(**r) for r in raw.get("referencias", [])),
+        referencias=tuple(
+            Referencia(**{**r, "traer": tuple(r.get("traer", []))}) for r in raw.get("referencias", [])
+        ),
         atributos_scd2=tuple(raw.get("atributos_scd2", [])),
+        referencia_polimorfica=(
+            ReferenciaPolimorfica(**raw["referencia_polimorfica"]) if raw.get("referencia_polimorfica") else None
+        ),
         sla=raw.get("sla", {}),
     )
 
@@ -134,7 +159,7 @@ def cargar_contrato(dataset: str, contracts_dir: str | Path = "conf/contracts") 
     """Carga el contrato YAML de un dataset (ruta relativa a la raíz del repositorio)."""
     try:
         import yaml
-    except ImportError as exc:  # pragma: no cover
+    except ImportError as exc:
         raise ContractError("PyYAML no está disponible. Instale requirements.txt") from exc
     base = Path(contracts_dir)
     if not base.is_absolute():

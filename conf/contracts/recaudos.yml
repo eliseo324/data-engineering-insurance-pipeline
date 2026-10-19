@@ -16,7 +16,11 @@ orden_version: [fecha_ingesta]
 historizacion: tipo1
 columnas_monetarias: [valor]
 referencias:
-  - {alias: poliza, columna: poliza_id, tabla: silver_polizas, columna_ref: poliza_id}
+  - alias: poliza
+    columna: poliza_id
+    tabla: silver_polizas
+    columna_ref: poliza_id
+    traer: [fecha_inicio_vigencia, fecha_fin_vigencia]
 columnas:
   - {nombre: recaudo_id, tipo: string, requerido: true, descripcion: "Identificador único de la transacción", patron: "^REC[0-9]{8}$"}
   - {nombre: poliza_id, tipo: string, requerido: true, descripcion: "Póliza a la que se aplica el pago (FK)"}

@@ -15,6 +15,15 @@ clave_negocio: [entidad, id_entidad, tipo_evento, fecha_evento, secuencia, paylo
 orden_version: [fecha_ingesta]
 historizacion: append_only
 columnas_monetarias: []
+referencia_polimorfica:
+  alias: entidad
+  columna_tipo: entidad
+  columna_id: id_entidad
+  destinos:
+    CLIENTE: {tabla: silver_clientes, columna_ref: cliente_id}
+    POLIZA: {tabla: silver_polizas, columna_ref: poliza_id}
+    RECAUDO: {tabla: silver_recaudos, columna_ref: recaudo_id}
+    SINIESTRO: {tabla: silver_siniestros, columna_ref: siniestro_id}
 columnas:
   - {nombre: evento_id, tipo: string, requerido: true, descripcion: "Identificador técnico del evento"}
   - {nombre: entidad, tipo: string, requerido: true, descripcion: "Entidad afectada", valores_permitidos: [CLIENTE, POLIZA, RECAUDO, SINIESTRO]}

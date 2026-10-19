@@ -3,7 +3,7 @@ version: "1.0.0"
 owner: dominio-siniestros
 descripcion: >
   Siniestros reportados en el core de siniestros. Una fila por siniestro o actualización
-  (cambios de estado, pagos y reservas)
+  (cambios de estado, pagos y reservas). Silver conserva la última foto por siniestro.
 fuente:
   sistema: CORE_SINIESTROS
   formato: csv
@@ -16,7 +16,11 @@ orden_version: [fecha_actualizacion]
 historizacion: tipo1
 columnas_monetarias: [valor_pagado, valor_reserva]
 referencias:
-  - {alias: poliza, columna: poliza_id, tabla: silver_polizas, columna_ref: poliza_id}
+  - alias: poliza
+    columna: poliza_id
+    tabla: silver_polizas
+    columna_ref: poliza_id
+    traer: [fecha_inicio_vigencia, fecha_fin_vigencia]
 columnas:
   - {nombre: siniestro_id, tipo: string, requerido: true, descripcion: "Identificador único del siniestro", patron: "^SIN[0-9]{8}$"}
   - {nombre: poliza_id, tipo: string, requerido: true, descripcion: "Póliza afectada (FK)"}
