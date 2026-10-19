@@ -168,6 +168,18 @@ La recuperación de fallos de datos se hace con *Repair run* después de corregi
 - `cumple_sla` se evalúa solo si `tipo_disparo = PERIODIC`. Los backfills y reprocesos manuales no distorsionan el indicador.
 - Objetivo: día 5 a las 08:00 hora Colombia, dos horas después de la ejecución programada.
 
+### D-30 · Observabilidad como vistas gobernadas sobre las tablas de control
+Las métricas de ejecución, volumen, calidad, frescura, esquema, SLA y consumo se exponen como vistas `vw_obs_*` en Unity Catalog. Esto tiene tres ventajas:
+- siempre están al día, sin procesos de carga adicionales;
+- heredan permisos y linaje;
+- el tablero y las alertas consultan una capa semántica estable, que no depende de la estructura interna de las tablas `ctl_*`.
+
+### D-31 · La observabilidad corre aunque el pipeline falle
+La tarea `observabilidad` usa `run_if: ALL_DONE`, así que las ejecuciones fallidas también quedan reflejadas en el tablero y disparan alertas. Las alertas que no hacen fallar al job (SLA, frescura, advertencias de calidad, esquema, cuarentena) se registran en `ctl_alertas` con severidad y responsable.
+
+### D-32 · Consumo estimado con respaldo real
+Free Edition no expone `system.billing` y no tiene costo. `vw_obs_consumo` estima el consumo con duración × DBU/hora × USD/DBU, con supuestos explícitos en `conf/observabilidad.yml`. Si las *system tables* están disponibles, se publica además `vw_obs_consumo_real` por `job_run_id`, que es la fuente corporativa.
+
 ---
 
 ## 3. Decisiones de calidad
