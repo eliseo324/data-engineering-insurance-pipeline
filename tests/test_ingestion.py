@@ -1,9 +1,9 @@
-import shutil
-import uuid
+# import shutil
+# import uuid
 from datetime import date, datetime
-from pathlib import Path
+# from pathlib import Path
 
-import pytest
+# import pytest
 
 from src.common.config import PipelineConfig
 from src.common.contracts import cargar_contrato
@@ -15,14 +15,14 @@ from src.ingestion.bronze import (
 )
 from src.ingestion.file_discovery import discover_files, select_files_to_process
 
-@pytest.fixture
-def tmp_path():
-    """tmp_path en UC Volume para que Spark pueda leer los archivos en Serverless."""
-    base = Path("/Volumes/workspace/default/volume1/_test_tmp")
-    path = base / uuid.uuid4().hex
-    path.mkdir(parents=True, exist_ok=True)
-    yield path
-    shutil.rmtree(str(path), ignore_errors=True)
+# @pytest.fixture
+# def tmp_path():
+#     """tmp_path en UC Volume para que Spark pueda leer los archivos en Serverless."""
+#     base = Path("/Volumes/workspace/default/volume1/_test_tmp")
+#     path = base / uuid.uuid4().hex
+#     path.mkdir(parents=True, exist_ok=True)
+#     yield path
+#     shutil.rmtree(str(path), ignore_errors=True)
 
 
 HEADER = "evento_id;entidad;id_entidad;tipo_evento;fecha_evento;fecha_ingesta;payload;secuencia;origen"
