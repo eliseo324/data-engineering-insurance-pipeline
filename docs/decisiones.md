@@ -128,6 +128,24 @@ Resultado con los datos entregados:
 | siniestros | 2.502 | 2.485 | 16 | 1 | 0 | 0,64 % |
 | movimientos | 8.002 | 7.992 | 8 | 1 | 1 | 0,10 % |
 
+### D-23 · Gold como snapshots mensuales por fecha de corte
+Los productos Gold se escriben con `replaceWhere fecha_corte = <corte>`. Esto da tres propiedades:
+- **Idempotencia:** reprocesar un corte lo reemplaza exactamente.
+- **Historico:** cada mes queda congelado y se puede comparar la cartera en el tiempo, sin historizar todo Silver.
+- **Rendimiento:** se usa liquid clustering por `fecha_corte` en lugar de particiones.
+
+El detalle funcional (grano, métricas, vigencias) está en [productos_gold.md](productos_gold.md).
+
+### D-24 · Estado de la póliza derivado de fechas
+El estado al corte se calcula con la vigencia y la fecha de cancelación, no con el texto del core.
+Así el resultado es reproducible para cualquier corte, incluido un backfill. Cuando el core
+contradice las fechas se marca `estado_inconsistente`. Con los datos entregados hay 1 caso.
+
+### D-25 · Prima devengada pro rata temporis
+`prima_devengada = prima x días expuestos en el mes / días de vigencia`. La exposición termina en la
+cancelación o en la fecha de corte, lo que ocurra primero. La razón de siniestralidad usa la prima
+devengada, no la emitida, para comparar costo y prima del mismo periodo.
+
 ---
 
 ## 3. Decisiones de calidad
@@ -157,3 +175,4 @@ Al procesar el historial del cliente (SCD2), el sistema ignora datos en dos situ
 
 - **DT-03:** Sin flujo automatizado para corregir datos en cuarentena.
 Los registros con errores se identifican y quedan en estado PENDIENTE, pero no existe un mecanismo para corregirlos y volverlos a procesar. Hace falta crear una tabla de correcciones aprobadas que ejecute un flujo automático de reingreso a las tuberías de datos.
+- **DT-04:** la fecha de cancelación se infiere (evento `CANCELACION`, luego `fecha_actualizacion`, luego fin de vigencia) porque el core no la informa. Se debe acordar en el contrato de pólizas que el productor envíe esa fecha.

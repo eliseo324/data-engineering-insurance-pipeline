@@ -17,7 +17,7 @@ BRONZE  bronze_<dataset>      copia fiel (STRING) + metadatos de ingesta
 SILVER  silver_<dataset>      + silver_cuarentena
    │  modelado orientado a casos de uso
    
-GOLD    gold_poliza_360 · gold_siniestralidad_mensual · gold_calidad_pipeline
+GOLD    gold_poliza_360 · gold_siniestralidad_mensual · gold_discrepancias · gold_calidad_pipeline
 CONTROL ctl_ejecuciones · ctl_archivos_procesados · ctl_esquemas · ctl_watermarks · ctl_calidad_resultados · ctl_reconciliacion
 ```
 
@@ -73,3 +73,4 @@ La integración continua (GitHub Actions, `.github/workflows/ci.yml`) ejecuta li
 
 ## Documentación
 - [Supuestos, decisiones y deuda técnica](docs/decisiones.md)
+- [Productos de datos Gold: granulidad, métricas y reglas](docs/productos_gold.md)
