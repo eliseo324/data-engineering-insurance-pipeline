@@ -146,6 +146,28 @@ contradice las fechas se marca `estado_inconsistente`. Con los datos entregados 
 cancelación o en la fecha de corte, lo que ocurra primero. La razón de siniestralidad usa la prima
 devengada, no la emitida, para comparar costo y prima del mismo periodo.
 
+### D-26 · Workflow como código con una sola definición
+El job vive en `resources/jobs/insurance_pipeline.job.yml`, en formato Asset Bundles. El mismo archivo sirve para dos despliegues:
+- `notebooks/90_desplegar_job` (SDK, Free Edition);
+- `databricks bundle deploy` por ambiente (corporativo).
+
+Antes de desplegar se valida el DAG: dependencias existentes, sin ciclos, orden de llaves foráneas, schedule y máximo 5 tareas concurrentes. Las pruebas verifican además que la especificación sea aceptada por el modelo `JobSettings` del SDK de Databricks.
+
+### D-27 · Reintentos según la naturaleza del fallo
+- **Bronze:** reintenta 2 veces, porque sus fallos típicos (almacenamiento, red) son transitorios.
+- **Silver y Gold:** reintentan 1 vez. Un bloqueo de calidad es determinístico y volvería a fallar.
+- **Validaciones:** no reintentan.
+
+La recuperación de fallos de datos se hace con *Repair run* después de corregir la causa. Como el watermark no avanza en la falla, la reanudación es segura.
+
+### D-28 · Barrera de validación antes de publicar
+`validaciones` ejecuta postcondiciones (pruebas de integración) sobre las tablas ya escritas: grano, completitud Silver→Gold, coherencia de métricas, SCD2 y frescura. `publicacion` solo corre si pasan las de bloqueo. Así un consumidor nunca ve un corte marcado como publicado que no superó los controles.
+
+### D-29 · El SLA se mide solo en ejecuciones programadas
+- `ctl_publicaciones` registra todas las publicaciones con su versión Delta, frescura y duración.
+- `cumple_sla` se evalúa solo si `tipo_disparo = PERIODIC`. Los backfills y reprocesos manuales no distorsionan el indicador.
+- Objetivo: día 5 a las 08:00 hora Colombia, dos horas después de la ejecución programada.
+
 ---
 
 ## 3. Decisiones de calidad

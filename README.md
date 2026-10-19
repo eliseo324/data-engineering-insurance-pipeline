@@ -74,3 +74,4 @@ La integración continua (GitHub Actions, `.github/workflows/ci.yml`) ejecuta li
 ## Documentación
 - [Supuestos, decisiones y deuda técnica](docs/decisiones.md)
 - [Productos de datos Gold: granulidad, métricas y reglas](docs/productos_gold.md)
+- [Operación: workflow, reintentos, recuperación, backfill y acuerdos operativos](docs/operacion.md)
