@@ -36,3 +36,33 @@ def test_nombres_calificados_y_rutas_parametrizadas():
 def test_modo_invalido_falla_con_mensaje_util():
     with pytest.raises(ConfigError, match="modo"):
         PipelineConfig(fecha_corte=date(2026, 8, 31), modo="full")
+
+
+def test_widgets_modo_y_ambiente_son_listas_desplegables():
+    from src.common.config import config_from_widgets
+
+    class FakeWidgets:
+        def __init__(self):
+            self.creados, self.valores = {}, {}
+
+        def text(self, name, default):
+            self.creados[name] = "text"
+            self.valores.setdefault(name, default)
+
+        def dropdown(self, name, default, choices):
+            assert default in choices
+            self.creados[name] = ("dropdown", tuple(choices))
+            self.valores.setdefault(name, default)
+
+        def get(self, name):
+            return self.valores[name]
+
+    class FakeDbutils:
+        widgets = FakeWidgets()
+
+    dbu = FakeDbutils()
+    dbu.widgets.valores["fecha_corte"] = "2026-08-31"
+    cfg = config_from_widgets(dbu)
+    assert dbu.widgets.creados["modo"] == ("dropdown", ("normal", "reproceso"))
+    assert dbu.widgets.creados["fecha_corte"] == "text"
+    assert cfg.modo == "normal" and cfg.fecha_corte == date(2026, 8, 31)

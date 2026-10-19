@@ -80,3 +80,80 @@ Un cambio en el contrato se versiona (`version`) y se revisa por Pull Request.
 - En Bronze, cada ejecución escribe un único commit por dataset (unión de los archivos del lote) para no fragmentar.
 
 ---
+
+### D-18 · Silver incremental por watermark sobre Bronze
+- **Modo `normal`:** Silver procesa solo los registros de Bronze con `_ingestion_ts` mayor al último watermark exitoso (`ctl_watermarks`).
+- **Modo `reproceso`:** procesa todo Bronze.
+- El watermark avanza solo cuando el lote quedó publicado y reconciliado. Si el pipeline falla, la siguiente ejecución retoma el mismo lote.
+- En un escenario corporativo el mismo patrón se implementaría con *Change Data Feed* de Delta sobre Bronze.
+
+### D-19 · Clasificación única de cada registro
+Cada registro del lote cae en exactamente una categoría:
+1. `DUP_EXACTO`
+2. `CUARENTENA`
+3. `DUP_CLAVE`
+4. `ACEPTADO`
+
+Las reglas se evalúan **antes** de elegir la versión por clave. Si la versión más reciente es inválida, prevalece la última válida, y la inválida queda trazada en cuarentena. Esta clasificación hace posible la reconciliación exacta (entrada = suma de categorías).
+
+### D-20 · Estrategias de escritura (MERGE idempotente)
+| Dataset | Estrategia | Por qué |
+|---|---|---|
+| clientes | SCD tipo 2 (`vigente_desde`, `vigente_hasta` exclusiva, `es_actual`) | El segmento y la ciudad cambian, y el análisis histórico por segmento lo necesita |
+| polizas, recaudos, siniestros | Tipo 1: se actualiza solo si la versión entrante es más reciente **y** su contenido cambió | Gold necesita la foto vigente; la historia de estados vive en movimientos y en los snapshots mensuales de Gold |
+| movimientos | Append-only por `_event_key` (hash de la clave de negocio) | Es un log de eventos; el MERGE absorbe reenvíos con otro `evento_id` |
+
+En todas las estrategias, reejecutar con la misma entrada deja la tabla igual. `MERGE WITH SCHEMA EVOLUTION` permite agregar columnas cuando el contrato evoluciona.
+
+### D-21 · Integridad referencial en tres estados
+- `_ref_<alias>`: el padre existe en Silver.
+- `_ref_<alias>_cuarentena`: el padre existe pero está en cuarentena. El hijo **no** es huérfano y se conserva marcado como por ejemplo: 67 recaudos de pólizas con prima negativa.
+- Ninguno de los dos: huerfano real. Según la regla, va a cuarentena (recaudos, siniestros) o solo se marca (pólizas sin cliente, movimientos).
+
+Las tablas padre se unen con **broadcast join**: son dimensiones pequeñas y así se evita el shuffle de la tabla de hecos.
+
+### D-22 · Severidad y umbrales
+- **Reglas automáticas del contrato:** son de advertencia con umbral del 2%, salvo la completitud de la clave de negocio, que es de **bloqueo** con umbral del 1%.
+- **Umbral global de cuarentena:** cada dataset tiene una regla de **bloqueo** con umbral del 5% del lote (`UMBRAL.cuarentena_total`).
+- **Reglas informativas:** se registran sin umbral.
+- **Si hay bloqueo:** se escriben igual la cuarentena, los resultados y la reconciliación, como evidencia. Silver no se modifica, la marca de agua no avanza y la tarea falla para que el job alerte.
+
+Resultado con los datos entregados:
+
+| Dataset | Entrada | Aceptados | Cuarentena | Dup. exactos | Dup. clave | % cuarentena |
+|---|---:|---:|---:|---:|---:|---:|
+| clientes | 502 | 501 | 0 | 1 | 0 | 0,00 % |
+| polizas | 1.502 | 1.486 | 15 | 1 | 0 | 1,00 % |
+| recaudos | 5.002 | 4.975 | 26 | 1 | 0 | 0,52 % |
+| siniestros | 2.502 | 2.485 | 16 | 1 | 0 | 0,64 % |
+| movimientos | 8.002 | 7.992 | 8 | 1 | 1 | 0,10 % |
+
+---
+
+## 3. Decisiones de calidad
+
+| ID | Situación | Tratamiento | Justificación |
+|---|---|---|---|
+| D-10 | Prima negativa, recaudo negativo con estado `Aplicado`, `valor_pagado` negativo | **Cuarentena** | No hay un tipo de transacción que los justifique (devolución o recobro) |
+| D-11 | Siniestro o pago fuera de vigencia | **Se marca** (informativa) | Puede ser legítimo (pago anticipado o mora); el patrón aleatorio de los datos impide tratarlo como error |
+| D-12 | Póliza sin cliente | **Se marca** (advertencia) | Es una dimensión que llega tarde: la póliza existe en el core. En Gold se muestra con cliente `NO_IDENTIFICADO` |
+| D-13 | Siniestro o recaudo sin póliza | **Cuarentena** | No se puede atribuir a un producto ni a una sucursal. Se publica en `gold_discrepancias` |
+| D-14 | `fin_vigencia` < `inicio_vigencia` | **Cuarentena** | La vigencia es inválida y rompe la exposición y la prima devengada |
+| D-15 | Campo obligatorio vacío (`producto`, `fecha_pago`, `fecha_evento`) | **Cuarentena** | Sin ese campo no se puede ubicar el registro en el grano de Gold |
+| D-16 | `estado` de siniestro vacío, `numero_documento` vacío | **Se marca** | El registro sigue siendo útil para costos o exposición |
+| D-17 | Aviso < ocurrencia, aviso > corte, ingesta < evento | **Se marca** (advertencia) | Inconsistencia temporal que no invalida montos |    
+
+## 4. Deuda técnica registrada
+- **DT-01:** Sin historial completo de cambios en la capa Silver.
+Actualmente, las tablas de pólizas, recaudos y siniestros solo guardan la foto más reciente de los datos. Si se intenta consultar cómo estaba la información en una fecha pasada, se filtra la foto actual, lo cual no da el historial exacto. Para reconstruir los datos tal como estaban en cualquier punto del tiempo (as-of), se requiere implementar SCD2 o Change Data Feed.
+- **DT-02:** Pérdida de versiones intermedias y tardías.
+Al procesar el historial del cliente (SCD2), el sistema ignora datos en dos situaciones:
+
+    Si llega una actualización con fecha anterior a la versión que ya está vigente.
+
+    Si llegan varias versiones de un mismo registro en un solo lote (solo se guarda la última).
+
+    Solución: Para conservar todo sin perder nada, se necesita un modelo de reconstrucción bitemporal.
+
+- **DT-03:** Sin flujo automatizado para corregir datos en cuarentena.
+Los registros con errores se identifican y quedan en estado PENDIENTE, pero no existe un mecanismo para corregirlos y volverlos a procesar. Hace falta crear una tabla de correcciones aprobadas que ejecute un flujo automático de reingreso a las tuberías de datos.

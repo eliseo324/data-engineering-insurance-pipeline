@@ -96,12 +96,11 @@ class PipelineConfig:
             "pipeline": self.pipeline,
         }
 
-    
     @classmethod
     def from_params(cls, params: dict, hoy: date | None = None) -> PipelineConfig:
         """Construye la configuración desde un diccionario de parámetros (job o widgets).
         Los valores vacíos se ignoran para conservar los defaults.
-        Cuando el valor dinámico `{{job.run_id}}` no se resolvió (ejecución interactiva) se genera uno.
+        Cuando el valor dinámico {{job.run_id}} no se resolvió (ejecución interactiva) se genera uno.
         """
         p = {k: v for k, v in params.items() if v is not None and str(v).strip() != ""}
         run_id = p.get("run_id") or p.get("job_run_id")
@@ -130,15 +129,22 @@ WIDGETS_DEFAULT = {
 }
 
 
+WIDGETS_DROPDOWN = {"modo": MODOS_VALIDOS, "ambiente": AMBIENTES_VALIDOS}
+
+
 def config_from_widgets(dbutils, extra_widgets: dict | None = None) -> PipelineConfig:
     """Crea los widgets estándar (si no existen) y devuelve la configuración resuelta.
 
-    En un job, los parámetros del job sobrescriben los valores de los widgets.
+    En un job, los parámetros del job sobrescriben los valores de los widgets. Si un notebook ya
+    tenía `modo` como texto, use "Remove all widgets" una vez para que aparezca como lista.
     """
     widgets = {**WIDGETS_DEFAULT, **(extra_widgets or {})}
     for name, default in widgets.items():
         try:
-            dbutils.widgets.text(name, default)
+            if name in WIDGETS_DROPDOWN:
+                dbutils.widgets.dropdown(name, default, list(WIDGETS_DROPDOWN[name]))
+            else:
+                dbutils.widgets.text(name, default)
         except Exception:  # noqa: BLE001 - el widget ya existe
             pass
     params = {name: dbutils.widgets.get(name) for name in widgets}
